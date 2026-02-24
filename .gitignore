@@ -72,3 +72,6 @@ replay_pid*
 *.ldf
 *.db
 *.bak
+
+*.txt
+*.docx
