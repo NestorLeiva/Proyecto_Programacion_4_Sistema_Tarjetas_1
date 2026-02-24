@@ -1,11 +1,9 @@
-# AUT 3 - Cambio PIN - Adaptado a nueva DB estructura
+# AUT 3 - Cambio PIN - CORREGIDO DEFINITIVO
 import mysql.connector
 from mysql.connector import Error
 from datetime import datetime
 from config import DATABASE, SERVER, PASSWORD, USUARIO
 from AUT4 import registrar_evento_aut4
-from seguridad import descifrar_pin, cifrar_pin
-
 
 class Conexion:
     """Conexion singleton para AUT 3"""
@@ -24,13 +22,16 @@ class Conexion:
             print(f"ERROR DB AUT3: {e}")
             return False
 
-
 def procesar_cambio_pin(datos):
-    """Cambia PIN - Registra en autorizacion y activa TRIGGER auditoria"""
-    n_tarjeta = datos.get("numero_tarjeta", "")
+    """Cambia PIN - Registra en autorizacion"""
+    n_tarjeta = datos.get("numero_tarjeta", "").strip()
     id_cajero = datos.get("id_cajero", 1)
+    pin_actual = datos.get("pin_actual", "").strip()
+    pin_nuevo = datos.get("pin_nuevo", "").strip()
 
-    registrar_evento_aut4(n_tarjeta, id_cajero, "SOLICITUD_CAMBIO_PIN")
+    print(f"AUT3 - Cambio PIN: {n_tarjeta}")
+
+    registrar_evento_aut4(n_tarjeta[:16], id_cajero, "SOLICITUD_CAMBIO_PIN")
 
     cursor = None
     try:
@@ -39,50 +40,50 @@ def procesar_cambio_pin(datos):
 
         cursor = Conexion.conn.cursor(dictionary=True)
 
-        # 1. Buscar tarjeta y validar cuenta activa
+        # Buscar tarjeta ignorando guiones
         query = """
             SELECT t.id_tarjeta, t.pin, t.estado as estado_tarjeta
             FROM tarjeta t 
             JOIN cuenta c ON t.id_cuenta = c.id_cuenta
-            WHERE t.numero_tarjeta = %s AND t.estado = 'ACTIVA' AND c.estado = 'ACTIVA'
+            WHERE REPLACE(t.numero_tarjeta, '-', '') = REPLACE(%s, '-', '')
+            AND t.estado = 'ACTIVA' AND c.estado = 'ACTIVA'
         """
         cursor.execute(query, (n_tarjeta,))
         fila = cursor.fetchone()
 
         if not fila:
             msg = "Tarjeta no existe o inactiva"
-            registrar_evento_aut4(n_tarjeta, id_cajero,
-                                  "CAMBIO_PIN_TARJETA_INACTIVA")
+            registrar_evento_aut4(n_tarjeta[:16], id_cajero, "CAMBIO_PIN_TARJETA_INACTIVA")
             return {"estado": "ERROR", "mensaje": msg}
 
-        # 2. Validar PIN actual (desencriptado)
-        pin_db_binario = fila["pin"]  # VARBINARY(32)
-        if descifrar_pin(pin_db_binario) != datos["pin_actual"]:
-            registrar_evento_aut4(n_tarjeta, id_cajero,
-                                  "CAMBIO_PIN_FALLIDO_PIN_INC")
+        # Validar PIN actual
+        if fila['pin'] != pin_actual:
+            registrar_evento_aut4(n_tarjeta[:16], id_cajero, "CAMBIO_PIN_FALLIDO_PIN_INC")
             return {"estado": "ERROR", "mensaje": "PIN actual incorrecto"}
 
-        # 3. Cifrar nuevo PIN
-        nuevo_pin_binario = cifrar_pin(datos["pin_nuevo"])
+        # Validar nuevo PIN
+        if len(pin_nuevo) != 4 or not pin_nuevo.isdigit():
+            return {"estado": "ERROR", "mensaje": "Nuevo PIN debe ser 4 digitos numericos"}
 
-        # 4. Actualizar PIN (TRIGGER auditoria se activa automaticamente)
-        cursor.execute("UPDATE tarjeta SET pin = %s WHERE id_tarjeta = %s",
-                       (nuevo_pin_binario, fila["id_tarjeta"]))
+        # ✅ CORREGIDO: Codigo de 8 caracteres exactos NUMERICOS
+        codigo_p = f"{int(datetime.now().timestamp()*1000) % 10000000:08d}"
 
-        # 5. Registrar en tabla autorizacion (nuevo formato)
-        codigo_p = f"PIN{datetime.now().strftime('%H%M%S')}"
+        # Actualizar PIN
+        cursor.execute(
+            "UPDATE tarjeta SET pin = %s WHERE id_tarjeta = %s",
+            (pin_nuevo, fila["id_tarjeta"])
+        )
+
+        # Registrar autorizacion
         cursor.execute("""
             INSERT INTO autorizacion 
             (codigo_autorizacion, id_tarjeta, id_cajero, id_tipo_transaccion, 
              monto, estado, fecha_solicitud, respuesta) 
-            VALUES (%s, %s, %s, 
-                   (SELECT id_tipo_transaccion FROM tipo_transaccion 
-                    WHERE codigo_tipo = 'CAMBIO_PIN' LIMIT 1), 
-                   0, 'APROBADA', NOW(), 'OK')
+            VALUES (%s, %s, %s, 3, 0, 'APROBADA', NOW(), 'PIN_CAMBIADO')
         """, (codigo_p, fila["id_tarjeta"], id_cajero))
 
         Conexion.conn.commit()
-        registrar_evento_aut4(n_tarjeta, id_cajero, "CAMBIO_PIN_EXITOSO")
+        registrar_evento_aut4(n_tarjeta[:16], id_cajero, "CAMBIO_PIN_EXITOSO")
 
         return {
             "estado": "OK",
@@ -91,7 +92,10 @@ def procesar_cambio_pin(datos):
         }
 
     except Exception as e:
-        Conexion.conn.rollback()
+        if Conexion.conn and Conexion.conn.is_connected():
+            Conexion.conn.rollback()
+        print(f"ERROR AUT3: {e}")
+        registrar_evento_aut4(n_tarjeta[:16], id_cajero, f"CAMBIO_PIN_ERROR_{str(e)[:20]}")
         return {"estado": "ERROR", "mensaje": f"Error interno: {str(e)}"}
     finally:
         if cursor:
