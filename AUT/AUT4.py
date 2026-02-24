@@ -1,40 +1,69 @@
-# AUT 4 - Bitacora asincrona - Compatible con nueva estructura
-import json
 import threading
-from queue import Queue
+import queue
+import json
+import os
 from datetime import datetime
-from config import RUTA_BITACORA
 
-cola_bitacora = Queue()
+# Configuración de la ruta (ajusta si es necesario)
+RUTA_BITACORA = "bitacora_4.txt"
 
-def enmascarar_tarjeta(numero_tarjeta: str) -> str:
-    """Enmascara numero_tarjeta para logs (VARCHAR(20))"""
-    if isinstance(numero_tarjeta, bytes):
-        numero_tarjeta = numero_tarjeta.decode('utf-8', errors='ignore')
-    
-    digitos = ''.join(c for c in numero_tarjeta if c.isdigit())
-    if len(digitos) >= 16:
-        return f"{digitos[:4]} {digitos[4:6]}** **** {digitos[-4:]}"
-    return "**** **** **** ****"
+# 1. La Cola para manejar las peticiones de forma ordenada
+cola_bitacora = queue.Queue()
+
+def enmascarar_tarjeta(tarjeta):
+    """Enmascara la tarjeta al formato: 1345 45** **** 2587"""
+    t = str(tarjeta).replace("-", "").replace(" ", "")
+    if len(t) >= 16:
+        # Formato específico según criterio 2.b
+        return f"{t[0:4]} {t[4:6]}** **** {t[12:16]}"
+    return t
 
 def worker_bitacora():
-    """Worker que escribe en archivo desde cola"""
+    """
+    Función que procesa la cola en segundo plano.
+    Este es el nombre que tu servidor.py está intentando importar.
+    """
     while True:
-        linea = cola_bitacora.get()
+        # Obtiene el evento de la cola
+        evento = cola_bitacora.get()
+        if evento is None:
+            break
+        
         try:
-            with open(RUTA_BITACORA, "a", encoding="utf-8") as f:
-                f.write(linea + "\n")
+            fecha_str = datetime.now().strftime("%d/%m/%Y")
+            hora_str = datetime.now().strftime("%H:%M:%S")
+            
+            # Estructura JSON según criterio 3
+            datos_json = {
+                "tarjeta": enmascarar_tarjeta(evento.get('tarjeta')),
+                "cajero": evento.get('cajero'),
+                "cliente": evento.get('cliente'),
+                "tipo": evento.get('tipo'),
+                "monto": f"{float(evento.get('monto', 0)):.2f}" if evento.get('monto') is not None else "0.00"
+            }
+            
+            # Formato de línea: Fecha: {JSON}
+            linea = f"{fecha_str} {hora_str}: {json.dumps(datos_json, ensure_ascii=False)}\n"
+            
+            with open(RUTA_BITACORA, 'a', encoding='utf-8') as f:
+                f.write(linea)
+                
+        except Exception as e:
+            print(f"Error en hilo de bitácora: {e}")
         finally:
             cola_bitacora.task_done()
 
-def registrar_evento_aut4(tarjeta, cajero, tipo, monto=None):
-    """Registra en bitacora (tabla auditoria se llena por triggers)"""
-    fecha = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    registro = {
-        "tarjeta": enmascarar_tarjeta(tarjeta),
+# 2. Iniciar el hilo de forma automática al importar el módulo
+hilo = threading.Thread(target=worker_bitacora, daemon=True)
+hilo.start()
+
+def registrar_evento_aut4(tarjeta, cajero, tipo, monto=None, cliente="112340456"):
+    """Función para encolar registros desde cualquier parte del sistema"""
+    evento = {
+        "tarjeta": tarjeta,
         "cajero": cajero,
+        "cliente": cliente,
         "tipo": tipo,
-        "monto": f"{monto:.2f}" if monto else "0.00"
+        "monto": monto
     }
-    linea = f"{fecha}: {json.dumps(registro)}"
-    cola_bitacora.put(linea)
+    cola_bitacora.put(evento)
