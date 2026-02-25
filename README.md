@@ -58,28 +58,6 @@ Para garantizar que los sockets puedan conectarse, inicie los servicios en este 
 
 ---
 
-## 📊 Protocolo de Comunicación
-
-### Trama de Texto (C# a Python)
-Para Retiros y Consultas se utiliza una trama de **33 caracteres**:
-`[Tipo:1][Tarjeta:16][Monto:8][PIN:4][Cajero:4]`
-
-### Trama Core (Python a Java)
-Para sincronización de saldos se utiliza una trama de **58 caracteres**:
-`[Tipo:1][Cuenta:23][Tarjeta:18][CodAuth:8][Monto:8]`
-
-### Formato JSON (C# a Python)
-Para el Cambio de PIN se utiliza un objeto estructurado:
-```json
-{
-  "tipo": "cambio_pin",
-  "numero_tarjeta": "4111...",
-  "pin_actual": "2020",
-  "pin_nuevo": "1515",
-  "id_cajero": 1
-}
-
-
 ## 🛡️ Auditoría y Seguridad (Módulo AUT4)
 
 El sistema integra un robusto motor de auditoría y medidas de seguridad perimetral para garantizar la integridad de las transacciones:
@@ -104,3 +82,27 @@ El sistema asegura que un retiro solo se concrete si **ambas** bases de datos co
 
 ### 4. Manejo de Excepciones
 Se implementaron bloques `try-catch` (C#) y `try-except` (Python) para capturar errores de red o de base de datos, evitando que el usuario final reciba información técnica sensible (como strings de conexión o errores de SQL).
+
+---
+
+## 📊 Protocolo de Comunicación
+
+### Trama de Texto (C# a Python)
+Para Retiros y Consultas se utiliza una trama de **33 caracteres**:
+`[Tipo:1][Tarjeta:16][Monto:8][PIN:4][Cajero:4]`
+
+### Trama Core (Python a Java)
+Para sincronización de saldos se utiliza una trama de **58 caracteres**:
+`[Tipo:1][Cuenta:23][Tarjeta:18][CodAuth:8][Monto:8]`
+
+### Formato JSON (C# a Python)
+Para el Cambio de PIN se utiliza un objeto estructurado:
+```json
+{
+  "tipo": "cambio_pin",
+  "numero_tarjeta": "4111...",
+  "pin_actual": "2020",
+  "pin_nuevo": "1515",
+  "id_cajero": 1
+}
+
