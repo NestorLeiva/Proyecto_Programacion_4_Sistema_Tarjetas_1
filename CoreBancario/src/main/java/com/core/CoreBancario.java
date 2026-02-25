@@ -38,8 +38,7 @@ public class CoreBancario {
 
     private static void manejarCliente(Socket socket) {
         try (socket;
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream())); PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
 
             String trama = in.readLine();
             if (trama != null) {
@@ -68,7 +67,6 @@ public class CoreBancario {
      * y actualización de cuentas de ahorro/corriente.
      * =========================================================================
      */
-    
     private static String procesarEnBaseDatos(String trama) {
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
             String tipo = trama.substring(0, 1);
@@ -84,6 +82,7 @@ public class CoreBancario {
             return "ERROR_DB";
         }
         return "TIPO_INVALIDO";
+
     }
 
     private static String consultarSaldo(Connection conn, String cuenta) throws SQLException {
@@ -115,8 +114,9 @@ public class CoreBancario {
                             psUp.executeUpdate();
                             return "OK";
                         }
-                    } else
+                    } else {
                         return "SALDO_INSUFICIENTE";
+                    }
                 }
             }
         }
@@ -130,15 +130,12 @@ public class CoreBancario {
      * archivo de texto plano con formato estructurado JSON.
      * =========================================================================
      */
-
     private static void registrarEnBitacora(String tramaIn, String respuestaOut) {
         String fecha = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         String jsonLog = String.format("{\"fecha\": \"%s\", \"trama_in\": \"%s\", \"respuesta_out\": \"%s\"}",
                 fecha, tramaIn, respuestaOut);
 
-        try (FileWriter fw = new FileWriter("bitacora_core.txt", true);
-                BufferedWriter bw = new BufferedWriter(fw);
-                PrintWriter out = new PrintWriter(bw)) {
+        try (FileWriter fw = new FileWriter("bitacora_core.txt", true); BufferedWriter bw = new BufferedWriter(fw); PrintWriter out = new PrintWriter(bw)) {
             out.println(jsonLog);
         } catch (IOException e) {
             System.err.println("Error Bitácora: " + e.getMessage());
@@ -154,20 +151,19 @@ public class CoreBancario {
      */
     private static String procesarCORE2(String trama) {
         try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
-
-            // --- NUEVOS ÍNDICES SINCRONIZADOS ---
             String tipo = trama.substring(0, 1);
-            String numCuenta = trama.substring(1, 24).trim(); // Del 1 al 24 (23 caracteres)
-            String numTarjeta = trama.substring(24, 43).trim(); // Del 24 al 43 (19 caracteres)
+            String numCuenta = trama.substring(1, 24).trim();
+            String numTarjeta = trama.substring(24, 42).trim(); // Ajustado a 18 para evitar solapamiento
 
-            if ("1".equals(tipo)) { // RETIRO
-                // El código de autorización y monto se desplazan
-                String codAutoriz = trama.substring(43, 51).trim();
-                double monto = Double.parseDouble(trama.substring(51, 59)) / 100.0;
+            if ("1".equals(tipo) || "C".equals(tipo)) { // <--- AHORA ACEPTA 'C' TAMBIÉN
+                String codAutoriz = trama.substring(42, 50).trim();
+                double monto = Double.parseDouble(trama.substring(50, 58)) / 100.0;
 
-                System.out.println("CORE2 - Procesando Retiro: Cuenta " + numCuenta + ", Monto: " + monto);
+                System.out.println("CORE2 - Procesando " + (tipo.equals("C") ? "Confirmación" : "Retiro")
+                        + ": Cuenta " + numCuenta + ", Monto: " + monto);
+
                 return procesarRetiroCORE2(conn, numCuenta, numTarjeta, codAutoriz, monto);
-            } else if ("2".equals(tipo)) { // CONSULTA
+            } else if ("2".equals(tipo)) {
                 return consultarSaldo(conn, numCuenta);
             }
 
