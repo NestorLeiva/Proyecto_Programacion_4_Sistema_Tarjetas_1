@@ -1,4 +1,4 @@
-# 🏦 Sistema Autorizador Bancario Multi-Tier (Proyecto P6)
+# 🏦 Sistema Autorizador Bancario 
 
 Este proyecto es un ecosistema bancario distribuido que simula el flujo real de transacciones de un ATM. La arquitectura integra tres lenguajes de programación distintos y dos motores de base de datos para demostrar interoperabilidad y manejo de sistemas críticos.
 
@@ -80,5 +80,27 @@ Para el Cambio de PIN se utiliza un objeto estructurado:
 }
 
 
-## 📝 Auditoría y Seguridad
-El sistema implementa un módulo de auditoría (AUT4) que registra cada paso del proceso. Las tarjetas se almacenan de forma segura y los errores de base de datos son capturados mediante excepciones personalizadas para evitar fugas de información en el cliente final.
+## 🛡️ Auditoría y Seguridad (Módulo AUT4)
+
+El sistema integra un robusto motor de auditoría y medidas de seguridad perimetral para garantizar la integridad de las transacciones:
+
+### 1. Registro de Eventos (Logging)
+Cada interacción con el cajero automático genera una entrada en el archivo `bitacora_4.txt`. Este proceso es gestionado por el módulo **AUT4**, que registra:
+* **Timestamp:** Fecha y hora exacta de la operación.
+* **ID de Cajero:** Identificación única del terminal físico.
+* **Acción:** Tipo de evento (SOLICITUD, APROBACIÓN, RECHAZO).
+* **Monto:** Valor transaccionado (en caso de retiros).
+
+### 2. Enmascaramiento de Datos Sensibles
+Para cumplir con estándares de seguridad bancaria (similares a PCI DSS), el sistema implementa:
+* **Ocultamiento de Tarjeta:** En los logs públicos y consolas, el número de tarjeta se enmascara (ej: `4111********1111`) para proteger la privacidad del cliente.
+* **Validación de PIN:** El PIN nunca se transmite en texto claro dentro de los objetos JSON de respuesta y se valida mediante comparaciones directas en el servidor seguro (Python).
+
+### 3. Integridad de Transacciones (Doble Commit)
+El sistema asegura que un retiro solo se concrete si **ambas** bases de datos confirman la operación:
+1. Se solicita la reserva de saldo al **Core Java (SQL Server)**.
+2. Si el Core responde `OK`, el **Autorizador Python (MySQL)** aplica el rebaje local.
+3. Si alguno de los dos falla, la transacción se marca como `RECHAZADA` y no se afecta el saldo real.
+
+### 4. Manejo de Excepciones
+Se implementaron bloques `try-catch` (C#) y `try-except` (Python) para capturar errores de red o de base de datos, evitando que el usuario final reciba información técnica sensible (como strings de conexión o errores de SQL).
