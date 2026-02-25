@@ -58,11 +58,20 @@ namespace SimuladorATM
         {
             Console.Write("Ingrese tarjeta: ");
             string tarjeta = Console.ReadLine().Replace("-", "").PadRight(16).Substring(0, 16);
-            Console.Write("Monto (centavos, ej 50.00 = 00005000): ");
-            string monto = Console.ReadLine().PadLeft(8, '0');
-            Console.Write("Ingrese PIN: ");
-            string pin = Console.ReadLine().PadRight(4).Substring(0, 4);
 
+            Console.Write("Monto a retirar (ej: 5000): ");
+            string montoInput = Console.ReadLine();
+
+            // Convertimos a entero y luego a string de 8 posiciones con ceros a la izquierda
+            // Así, si el usuario pone "5000", se envía "00005000"
+            int montoInt = 0;
+            int.TryParse(montoInput, out montoInt);
+            string monto = montoInt.ToString().PadLeft(8, '0');
+
+            Console.Write("Ingrese PIN: ");
+            string pin = Console.ReadLine().Trim().PadRight(4).Substring(0, 4);
+
+            // Trama: Tipo(1) + Tarjeta(16) + Monto(8) + PIN(4) + Cajero(4)
             string trama = $"1{tarjeta}{monto}{pin}{idCajero:D4}";
             Comunicar(trama);
         }

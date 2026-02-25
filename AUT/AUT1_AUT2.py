@@ -46,7 +46,7 @@ def procesar_retiro_consulta(trama):
         except:
             id_cajero = 1 # Default si la trama viene incompleta
 
-        monto_f = float(monto_raw) / 100.0
+        monto_f = float(monto_raw) 
         
         print(f"DEBUG - Procesando {('RETIRO' if tipo == '1' else 'CONSULTA')} en Cajero: {id_cajero}")
         registrar_evento_aut4(n_tarjeta, id_cajero, f"SOLICITUD_{'RETIRO' if tipo == '1' else 'CONSULTA'}", monto_f)
