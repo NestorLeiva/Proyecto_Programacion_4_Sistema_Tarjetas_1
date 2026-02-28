@@ -1,77 +1,62 @@
-# Entornos y Dependencias
-.env
-.venv/
-venv/
-env/
-**/packages/
-*.nupkg
-*.snupkg
-
-# Builds y Compilados
+#############################################
+## --- [Bb] Visual Studio / .NET (Consola y WCF) ---
+#############################################
+.vs/
 [Bb]in/
 [Oo]bj/
 [Dd]ebug*/
 [Rr]elease*/
-build/
-dist/
-target/
-__pycache__/
-*.pyc
-*.py[cod]
-*.class
-*.jar
-*.war
-*.ear
-
-# IDEs y Editores
-.vs/
-.vscode/
-.idea/
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
-.spyproject
-.ropeproject
-
-# Logs y Temporales
-*.log
-pip-log.txt
-*.cache
-.DS_Store
-Thumbs.db
-
-# Testing y Coverage
-.tox/
-.coverage*
-htmlcov/
-.pytest_cache/
-*.cover
-coverage*.xml
-
-# Python Específico
-*.egg-info/
-wheels/
-.ipynb_checkpoints
-.pdm.toml
-poetry.toml
-.ruff_cache/
-
-# Java Específico
-hs_err_pid*
-replay_pid*
-
-# C#/.NET Específico
 *.pdb
 *.ilk
 *.iobj
+*.ipdb
 
-# Bases de Datos (útil para tus proyectos SQL)
+# WCF Específico: Ignora archivos de información de VS pero NO los .config
+*.svcmap
+*.svcinfo
+
+# NuGet
+packages/
+*.nupkg
+
+#############################################
+## --- [Py] Python (Scripts o Backend) ---
+#############################################
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv/
+venv/
+env/
+.pytest_cache/
+.coverage
+*.egg-info/
+
+#############################################
+## --- [Ja] Java (Maven/Gradle/Caché) ---
+#############################################
+*.class
+*.jar
+*.war
+*.ear
+target/
+hs_err_pid*
+
+#############################################
+## --- Bases de Datos y Otros ---
+#############################################
 *.sqlite3
 *.mdf
 *.ldf
 *.db
 *.bak
+*.log
 
-*.txt
-*.docx
+# Archivos de sistema
+.DS_Store
+Thumbs.db
