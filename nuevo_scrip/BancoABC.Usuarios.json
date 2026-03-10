@@ -1,0 +1,14 @@
+[{
+  "_id": {
+    "$oid": "69acf5f87d0c149d1ef55bf1"
+  },
+  "Identificacion": "101110111",
+  "Nombre": "RodrigoMod",
+  "PrimerApellido": "Admin",
+  "SegundoApellido": "Sistema",
+  "CorreoElectronico": "nuevo.correo@bancoabc.com",
+  "Usuario": "DO9I70TmKUrN+w1u35T5Ug==",
+  "Contrasena": "7Q/p1/5lqHbVthWDwhvItw==",
+  "Estado": "inactivo",
+  "Tipo": 1
+}]
