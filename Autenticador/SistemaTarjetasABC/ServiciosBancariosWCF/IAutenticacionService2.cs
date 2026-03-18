@@ -101,11 +101,13 @@ namespace ServiciosBancariosWCF
         {
             var respuesta = new RespuestaBase();
 
-            var usuarioDb = MongoDbContext.Usuarios
-                .Find(u => u.Usuario == usuarioEncriptado &&
-                           u.Contrasena == contrasenaEncriptada &&
-                           u.Tipo == tipoUsuario)
-                .FirstOrDefault();
+            // Buscamos que coincida usuario, contraseña, tipo Y que el ESTADO sea "activo"
+            var usuarioDb = MongoDbContext.Usuarios.Find(u =>
+                u.Usuario == usuarioEncriptado &&
+                u.Contrasena == contrasenaEncriptada &&
+                u.Tipo == tipoUsuario &&
+                u.Estado == "activo" // <-- LA RESTRICCIÓN DE ESTADO
+            ).FirstOrDefault();
 
             if (usuarioDb != null)
             {
@@ -118,7 +120,7 @@ namespace ServiciosBancariosWCF
                 respuesta.Mensaje = "Usuario y/o contraseña incorrectos.";
             }
 
-            RegistrarBitacora($"Autenticar: {JsonConvert.SerializeObject(usuarioEncriptado)}", respuesta.Mensaje);
+            RegistrarBitacora($"Autenticar: {usuarioEncriptado}", respuesta.Mensaje);
             return respuesta;
         }
 
